@@ -4,24 +4,23 @@
 base_dir="."
 
 # Iterate through all files and directories recursively
-find "$base_dir" -type f -or -type d | while read -r path; do
+find "$base_dir" -type f | while read -r file; do
   # Skip .git directories and files
-  if [[ "$path" == *".git"* ]]; then
+  if [[ "$file" == *".git"* ]]; then
     continue
   fi
 
-  # Get the last modified date of the path
-  last_modified_date=$(stat -c %y "$path" | cut -d ' ' -f 1)
+  # Get the last modified date of the file in YYYY-MM-DD format
+  last_modified_date=$(stat -c %y "$file" | cut -d ' ' -f 1)
+  
+  # Format the date for git commit (RFC 3339 format: "YYYY-MM-DDTHH:MM:SS")
+  last_modified_time=$(stat -c %y "$file" | cut -d ' ' -f 2 | cut -d '.' -f 1)
+  commit_date="$last_modified_date $last_modified_time"
 
-  # Check if the file or directory has been modified
+  # Check if the file has been modified
   if [[ "$last_modified_date" != "" ]]; then
-    # Check if the path is already staged or committed
-    if git ls-files --stage | grep -q "$(basename "$path")"; then
-      echo "$path is already staged or committed."
-    else
-      git add "$path"
-      git commit -m "Committing $path based on last modified time $last_modified_date"
-      echo "Committed $path with date $last_modified_date"
-    fi
+    git add "$file"
+    git commit -m "Committing $file based on last modified time $last_modified_date" --date="$commit_date"
+    echo "Committed $file with date $commit_date"
   fi
 done
