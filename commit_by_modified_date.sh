@@ -1,28 +1,21 @@
 #!/bin/bash
 
-# Function to get the last modified date of a file
-get_last_modified_date() {
-  local file="$1"
-  date -r "$file" +"%a %b %d %H:%M:%S %Y %z"
-}
+# Base directory to start the search
+base_dir="."
 
-# Function to commit a file
-commit_file() {
-  local file="$1"
-  local date_str
-  date_str=$(get_last_modified_date "$file")
-  git add "$file"
-  git commit -m "Committing $file based on last modified time $date_str"
-}
+# Iterate through all files and directories recursively
+find "$base_dir" -type f -or -type d | while read -r path; do
+  # Skip the script file itself
+  if [[ "$path" == "$(realpath "$0")" ]]; then
+    continue
+  fi
 
-# Find all modified files and commit them
-find_modified_files() {
-  # Find all files and directories
-  find . -type f -newermt "$(date --date='1 minute ago' +'%Y-%m-%d %H:%M:%S')" |
-  while IFS= read -r file; do
-    commit_file "$file"
-  done
-}
+  # Get the last modified date of the path
+  last_modified_date=$(stat -c %y "$path" | cut -d ' ' -f 1)
 
-# Find and commit modified files
-find_modified_files
+  # Commit the file or directory if it has been modified
+  if [[ "$last_modified_date" != "" ]]; then
+    git add "$path"
+    git commit -m "Committing $path based on last modified time $last_modified_date"
+  fi
+done
